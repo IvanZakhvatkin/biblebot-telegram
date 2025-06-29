@@ -9,9 +9,9 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, W
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 import httpx
-
 import os
 
+# --- Подключение через переменные среды ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 BOT_USERNAME = os.getenv("BOT_USERNAME")
 
@@ -19,10 +19,9 @@ bot = Bot(
     token=BOT_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
-
 dp = Dispatcher()
 
-
+# --- Команды бота ---
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
@@ -33,16 +32,13 @@ async def cmd_start(message: Message):
         "/bible — открыть любую главу Библии"
     )
 
-
 @dp.message(Command("today"))
 async def cmd_today(message: Message):
     await message.answer(await fetch_plan(date.today()))
 
-
 @dp.message(Command("tomorrow"))
 async def cmd_tomorrow(message: Message):
     await message.answer(await fetch_plan(date.today() + timedelta(days=1)))
-
 
 @dp.message(Command("bible"))
 async def cmd_bible(message: Message):
@@ -56,7 +52,7 @@ async def cmd_bible(message: Message):
     )
     await message.answer("Открой любую книгу и главу Библии:", reply_markup=keyboard)
 
-
+# --- Получение плана чтения ---
 async def fetch_plan(date_obj: date) -> str:
     date_str = date_obj.isoformat()
     try:
@@ -71,8 +67,7 @@ async def fetch_plan(date_obj: date) -> str:
                         f'🔹 <a href="https://t.me/{BOT_USERNAME}/webapp?start={date_str}_{p.replace(" ", "_")}">{p}</a>'
                         for p in parts
                     )
-                    label = "сегодня" if date_obj == date.today(
-                    ) else f"{date_str}"
+                    label = "сегодня" if date_obj == date.today() else f"{date_str}"
                     return f"📖 План чтения на {label}\n{links}"
                 else:
                     return f"На {date_str} нет плана чтения."
@@ -81,6 +76,21 @@ async def fetch_plan(date_obj: date) -> str:
     except Exception as e:
         return f"Ошибка подключения: {e}"
 
+# --- Костыль для Render — имитация открытого порта ---
+import threading
+from fastapi import FastAPI
+import uvicorn
 
+fake_app = FastAPI()
+
+@fake_app.get("/")
+def read_root():
+    return {"status": "I'm alive"}
+
+def run_fake_server():
+    uvicorn.run(fake_app, host="0.0.0.0", port=10000)
+
+# --- Запуск ---
 if __name__ == "__main__":
+    threading.Thread(target=run_fake_server, daemon=True).start()
     asyncio.run(dp.start_polling(bot))
