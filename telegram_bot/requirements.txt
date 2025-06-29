@@ -1,4 +1,0 @@
-# telegram_bot/requirements.txt
-aiogram
-python-dotenv
-requests
