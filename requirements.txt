@@ -3,3 +3,5 @@ aiogram
 python-dotenv
 requests
 httpx
+fastapi
+uvicorn
