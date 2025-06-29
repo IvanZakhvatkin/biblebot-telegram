@@ -51,11 +51,12 @@ async def cmd_bible(message: Message):
     )
     await message.answer("Открой любую книгу и главу Библии:", reply_markup=keyboard)
 
+# Подключение к публичному API
 async def fetch_plan(date_obj: date) -> str:
     date_str = date_obj.isoformat()
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"http://127.0.0.1:8000/plan?date={date_str}")
+            response = await client.get(f"https://biblebot-api.onrender.com/plan?date={date_str}")
             if response.status_code == 200:
                 data = response.json()
                 if data["readings"]:
