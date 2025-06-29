@@ -1,17 +1,16 @@
 # telegram_bot/telegram_bot.py
-# aiogram-бот с командами: /start, /today, /tomorrow, /bible
 
 import asyncio
+import os
+import httpx
 from datetime import date, timedelta
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
-import httpx
-import os
 
-# --- Подключение через переменные среды ---
+# Telegram config
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 BOT_USERNAME = os.getenv("BOT_USERNAME")
 
@@ -21,7 +20,7 @@ bot = Bot(
 )
 dp = Dispatcher()
 
-# --- Команды бота ---
+# Команды
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
@@ -52,7 +51,6 @@ async def cmd_bible(message: Message):
     )
     await message.answer("Открой любую книгу и главу Библии:", reply_markup=keyboard)
 
-# --- Получение плана чтения ---
 async def fetch_plan(date_obj: date) -> str:
     date_str = date_obj.isoformat()
     try:
@@ -76,7 +74,18 @@ async def fetch_plan(date_obj: date) -> str:
     except Exception as e:
         return f"Ошибка подключения: {e}"
 
-# --- Костыль для Render — имитация открытого порта ---
+# ⏱ Фоновая функция для авто-пинга
+async def autopinger():
+    while True:
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get("http://localhost:10000/ping")
+                print("🔄 Ping sent to self")
+        except Exception as e:
+            print(f"❌ Ping error: {e}")
+        await asyncio.sleep(60)
+
+# 🌀 Web-сервер для Render
 import threading
 from fastapi import FastAPI
 import uvicorn
@@ -84,13 +93,19 @@ import uvicorn
 fake_app = FastAPI()
 
 @fake_app.get("/")
-def read_root():
+def root():
     return {"status": "I'm alive"}
 
-def run_fake_server():
-    uvicorn.run(fake_app, host="0.0.0.0", port=10000)
+@fake_app.get("/ping")
+def ping():
+    return {"pong": True}
 
-# --- Запуск ---
+def run_fake_server():
+    uvicorn.run(fake_app, host="0.0.0.0", port=10000, log_level="warning")
+
+# 🚀 Запуск всего
 if __name__ == "__main__":
     threading.Thread(target=run_fake_server, daemon=True).start()
-    asyncio.run(dp.start_polling(bot))
+    loop = asyncio.get_event_loop()
+    loop.create_task(autopinger())
+    loop.run_until_complete(dp.start_polling(bot))
